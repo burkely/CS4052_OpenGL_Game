@@ -1,5 +1,7 @@
 ﻿  main.cpp
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(290): warning C4244: 'initializing': conversion from 'D_WORD' to 'float', possible loss of data
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(295): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(172): warning C4244: 'initializing': conversion from 'float' to 'GLuint', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(375): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(396): warning C4244: 'initializing': conversion from 'D_WORD' to 'float', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(401): warning C4244: '=': conversion from 'double' to 'GLfloat', possible loss of data
   CS4052_Game_Project.vcxproj -> C:\Users\Lydia\Documents\Visual Studio 2015\Projects\CS4052_Game_Project\Debug\CS4052_Game_Project.exe
   CS4052_Game_Project.vcxproj -> C:\Users\Lydia\Documents\Visual Studio 2015\Projects\CS4052_Game_Project\Debug\CS4052_Game_Project.pdb (Partial PDB)

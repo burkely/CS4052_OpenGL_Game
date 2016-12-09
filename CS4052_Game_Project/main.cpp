@@ -5,15 +5,25 @@
 #include <mmsystem.h>
 #include "SOIL.h"
 
+//for transformations
+#include <glm/glm/glm.hpp>
+#include <glm/glm/gtc/matrix_transform.hpp>
+#include <glm/glm/gtc/type_ptr.hpp>
+
+//list of cube vertices
+#include "cube_vertices.h"
+
+
 using namespace std;
 
-
-const int WINDOW_WIDTH = 800;
-const int WINDOW_HEIGHT = 600;
+const int WINDOW_WIDTH = 1800;
+const int WINDOW_HEIGHT = 800;
 
 const char VERTEX_SHADER[] = "../Shaders/simpleVertexShader.txt";
 const char FRAGMENT_SHADER[] = "../Shaders/simpleFragmentShader.txt";
 
+GLuint vertexShader;
+GLuint fragmentShader;
 
 GLuint shaderProgramID;
 GLuint VAO = 0, VBO = 0, EBO = 0;
@@ -22,6 +32,25 @@ GLuint texture;
 typedef double D_WORD;
 
 GLfloat greenValue;
+
+glm::vec3 cubePositions[] = {
+	glm::vec3(0.0f,  0.0f,  0.0f),
+	glm::vec3(3.0f,  5.0f, -15.0f),
+	glm::vec3(-3.5f, -2.2f, -2.5f),
+	glm::vec3(-5.8f, -2.0f, -12.3f),
+	glm::vec3(5.4f, -0.4f, -3.5f),
+	glm::vec3(-1.7f,  3.0f, -7.5f),
+	glm::vec3(4.3f, -2.0f, -2.5f),
+	glm::vec3(2.1f,  1.2f, -2.5f),
+	glm::vec3(1.5f,  0.2f, -1.5f),
+	glm::vec3(-2.9f,  1.0f, -1.5f),
+
+	glm::vec3(2.4f, -1.6f, -2.5f),
+	glm::vec3(2.6f,  2.0f, -1.5f),
+	glm::vec3(-2.5f,  -1.0f, -1.5f),
+	glm::vec3(-4.3f,  1.0f, -1.5f)
+};
+
 
 // Shader Functions
 #pragma region SHADER_FUNCTIONS
@@ -99,8 +128,8 @@ GLuint CompileShaders()
 	}
 
 	// Create two shader objects, vertex & fragment
-	GLuint vertexShader = AddShader(shaderProgramID, VERTEX_SHADER, GL_VERTEX_SHADER);
-	GLuint fragmentShader = AddShader(shaderProgramID, FRAGMENT_SHADER, GL_FRAGMENT_SHADER);
+	vertexShader = AddShader(shaderProgramID, VERTEX_SHADER, GL_VERTEX_SHADER);
+	fragmentShader = AddShader(shaderProgramID, FRAGMENT_SHADER, GL_FRAGMENT_SHADER);
 
 	GLint Success = 0;
 	GLchar ErrorLog[1024] = { 0 };
@@ -140,7 +169,7 @@ GLuint CompileShaders()
 
 void generateObjectBuffers(GLfloat vertices[], GLfloat colors[], GLfloat texCoords[], GLuint indices[]) {
 	
-	GLuint numVertices = 4;
+	GLuint numVertices = cube_vertex_count;
 
 	//A buffer object is created by binding a name returned by GenBuffers to 
 	//a buffer target.The binding is effected by calling glBindBuffers
@@ -148,7 +177,7 @@ void generateObjectBuffers(GLfloat vertices[], GLfloat colors[], GLfloat texCoor
 	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
+	//glGenBuffers(1, &EBO);
 
 	// Bind buffer objects
 	glBindVertexArray(VAO);
@@ -158,26 +187,29 @@ void generateObjectBuffers(GLfloat vertices[], GLfloat colors[], GLfloat texCoor
 	// if you have more data besides vertices (e.g., colours or yextures), use glBufferSubData to 
 	//tell the buffer when the vertices array ends and when the colors start
 	glBufferData(GL_ARRAY_BUFFER, numVertices * 8 * sizeof(GLfloat), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, numVertices * 3 * sizeof(GLfloat), vertices);
-	glBufferSubData(GL_ARRAY_BUFFER, numVertices * 3 * sizeof(GLfloat), numVertices * 3 * sizeof(GLfloat), colors);
-	glBufferSubData(GL_ARRAY_BUFFER, numVertices * 6 * sizeof(GLfloat), numVertices * 2 * sizeof(GLfloat), texCoords);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, numVertices * 5 * sizeof(GLfloat), cube_vertices);
+	glBufferSubData(GL_ARRAY_BUFFER, numVertices * 5 * sizeof(GLfloat), numVertices * 3 * sizeof(GLfloat), colors);
 	
+
+	// Position attribute
 	//enable position attribute, pointed to by attribPointer, disabled by default in opengl
-	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
 	// Then set our vertex attributes pointers
 	// 1st param again is 0, location of position data in vertex shader
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+	glEnableVertexAttribArray(0);
+	// TexCoord attribute
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(2);
+
 	// color attribute
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)(numVertices * 3 * sizeof(GLfloat)));
-	// TexCoord attribute
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)(numVertices * 6 * sizeof(GLfloat)));
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)(numVertices * 5 * sizeof(GLfloat)));
+	
 	//.. note stride sizes of 0 above as coords are tightly packed
 
 	//bind element array and load indices
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), indices, GL_STATIC_DRAW);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), indices, GL_STATIC_DRAW);
 
 
 	// Load and create a texture 
@@ -212,7 +244,9 @@ void generateObjectBuffers(GLfloat vertices[], GLfloat colors[], GLfloat texCoor
 
 void init() {
 
+	//wireframe mode
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
 
 	GLfloat vertices[] = {
 		0.5f,  0.5f, 0.0f,  // Top Right
@@ -225,7 +259,44 @@ void init() {
 		1.0f, 0.0f, 0.0f,		// Top Right
 		0.0f, 1.0f, 0.0f,     // Bottom Right
 		0.0f, 0.0f, 1.0f,     // Bottom Left
-		1.0f, 1.0f, 0.0f	// Top Left 
+		0.0f, 0.0f, 1.0f,
+		1.0f, 1.0f, 0.0f,	// Top Left 
+		1.0f, 0.0f, 0.0f,
+
+		1.0f, 0.0f, 0.0f,		// Top Right
+		0.0f, 1.0f, 0.0f,     // Bottom Right
+		0.0f, 0.0f, 1.0f,     // Bottom Left
+		0.0f, 0.0f, 1.0f,
+		1.0f, 1.0f, 0.0f,	// Top Left 
+		1.0f, 0.0f, 0.0f,
+
+		1.0f, 0.0f, 0.0f,		// Top Right
+		0.0f, 1.0f, 0.0f,     // Bottom Right
+		0.0f, 0.0f, 1.0f,     // Bottom Left
+		0.0f, 0.0f, 1.0f,
+		1.0f, 1.0f, 0.0f,	// Top Left 
+		1.0f, 0.0f, 0.0f,
+
+		1.0f, 0.0f, 0.0f,		// Top Right
+		0.0f, 1.0f, 0.0f,     // Bottom Right
+		0.0f, 0.0f, 1.0f,     // Bottom Left
+		0.0f, 0.0f, 1.0f,
+		1.0f, 1.0f, 0.0f,	// Top Left 
+		1.0f, 0.0f, 0.0f,
+
+		1.0f, 0.0f, 0.0f,		// Top Right
+		0.0f, 1.0f, 0.0f,     // Bottom Right
+		0.0f, 0.0f, 1.0f,     // Bottom Left
+		0.0f, 0.0f, 1.0f,
+		1.0f, 1.0f, 0.0f,	// Top Left 
+		1.0f, 0.0f, 0.0f,
+
+		1.0f, 0.0f, 0.0f,		// Top Right
+		0.0f, 1.0f, 0.0f,     // Bottom Right
+		0.0f, 0.0f, 1.0f,     // Bottom Left
+		0.0f, 0.0f, 1.0f,
+		1.0f, 1.0f, 0.0f,	// Top Left 
+		1.0f, 0.0f, 0.0f,
 	};
 
 	GLfloat texCoords[] = {	
@@ -272,17 +343,49 @@ void display() {
 	GLint vertexColorLocation = glGetUniformLocation(shaderProgramID, "ourColor");
 	glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
 	*/
+	
+	// Create transformations
+	glm::mat4 view;
+	glm::mat4 projection;
+
+	view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+	projection = glm::perspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
+	
+	// Get their uniform location
+	GLint modelLoc = glGetUniformLocation(shaderProgramID, "model");
+	GLint viewLoc = glGetUniformLocation(shaderProgramID, "view");
+	GLint projLoc = glGetUniformLocation(shaderProgramID, "projection");
+	// Pass the matrices to the shader
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+	// Note: currently we set the projection matrix each frame, but since the projection matrix rarely 
+	//changes it's often best practice to set it outside the main loop only once.
+	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
 
 	glBindVertexArray(VAO);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+	for (GLuint i = 0; i < 14; i++)
+	{
+		float j = i + 10.0f;
+		glm::mat4 model;
+		model = glm::translate(model, cubePositions[i]);
+		GLfloat angle = 20.0f + j;
+		model = glm::rotate(model, (GLfloat)(glutGet(GLUT_ELAPSED_TIME)/(j*100.0f)) * angle, glm::vec3(1.0f, 0.3f, 0.5f));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+		glDrawArrays(GL_TRIANGLES, 0, cube_vertex_count);
+	}
+	glBindVertexArray(0);
+
+
+	//glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 	
-	//glDrawArrays(GL_TRIANGLES, 0, 3);
+
 	glBindVertexArray(0);
 
 	// Swap the screen buffers
 	glutSwapBuffers();
 
-	//glutPostRedisplay();
+	glutPostRedisplay();
 }
 
 void idle() {
