@@ -3,15 +3,15 @@ float ground_vertex_count = 6;
 
 float ground_vertices[] = {
 
-	// First triangle		//tex
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-	0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+	// First triangle		//norms				//tex
+	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0,		0.0f, 0.0f,
+	0.5f, -0.5f, -0.5f,   0.0f, 0.0f, -1.0,		1.0f, 0.0f,
+	0.5f,  0.5f, -0.5f,	 0.0f, 0.0f, -1.0,		 1.0f, 1.0f,
 
 	// Second triangle
-	0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-	-0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-	-0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+	0.5f,  0.5f, -0.5f,   0.0f, 0.0f, -1.0,		1.0f, 1.0f,
+	-0.5f,  0.5f, -0.5f,   0.0f, 0.0f, -1.0,	0.0f, 1.0f,
+	-0.5f, -0.5f, -0.5f,   0.0f, 0.0f, -1.0,	0.0f, 0.0f,
 
 	/*
 	// First triangle		//tex
@@ -21,7 +21,8 @@ float ground_vertices[] = {
 	// Second triangle
 	0.5f, -0.5f, 0.0f,		1.0f, 0.0f, // Bottom Right
 	-0.5f, -0.5f, 0.0f,		0.0f, 0.0f, // Bottom Left
-	-0.5f,  0.5f, 0.0f,		0.0f, 1.0f  // Top Left*/
+	-0.5f,  0.5f, 0.0f,		0.0f, 1.0f  // Top Left
+	*/
 
 };
 

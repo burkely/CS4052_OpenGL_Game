@@ -30,15 +30,21 @@ const int WINDOW_WIDTH = 1400;
 const int WINDOW_HEIGHT = 800;
 
 // Shader vars
-const char VERTEX_SHADER[] = "../Shaders/simpleVertexShader.txt";
-const char FRAGMENT_SHADER[] = "../Shaders/simpleFragmentShader.txt";
-GLuint vertexShader;
-GLuint fragmentShader;
-GLuint shaderProgramID;
+const char OBJECT_VERTEX_SHADER[] = "../Shaders/ObjectsVertexShader.txt";
+const char OBJECT_FRAGMENT_SHADER[] = "../Shaders/ObjectsFragmentShader.txt";
+const char LIGHTING_VERTEX_SHADER[] = "../Shaders/LightingVertexShader.txt";
+const char LIGHTING_FRAGMENT_SHADER[] = "../Shaders/LightingFragmentShader.txt";
+
+GLuint vertexShader, fragmentShader;
+GLuint objectShaderProgramID;
+GLuint lightingShaderProgramID;
 
 // Vertex Objects
-GLuint CUBE_VAO, GROUND_VAO;
-GLuint texture;
+GLuint CUBE_VAO, GROUND_VAO, LIGHT_VAO;
+
+//Textures
+GLuint containerSpecularMapID, containerDiffuseMapID;
+GLuint cubeTextID, groundTextID, lightTextID, wallTextID;
 
 // View & Camera Vars
 glm::vec3 cameraPos = glm::vec3(0.0f, -3.0f, 6.0f);
@@ -50,6 +56,9 @@ float pitch = 0.0f, yaw = -90.0f;
 // Event array for Key presses
 bool keys[256];
 bool specKeys[256];
+
+// Light attributes
+glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 
 
 /*-----------------------------------------
@@ -114,7 +123,7 @@ static GLuint AddShader(GLuint ShaderProgram, const char* pShaderText, GLenum Sh
 	return ShaderObj;
 }
 
-GLuint CompileShaders()
+GLuint CompileShaders(const char* VERTEX_SHADER, const char* FRAGMENT_SHADER)
 {
 	//Note: we will link all the shaders together into this ID
 
@@ -129,10 +138,10 @@ GLuint CompileShaders()
 		exit(1);
 	}
 
-	// Create two shader objects, vertex & fragment
+	// Create shader objects, vertex & fragment
 	vertexShader = AddShader(shaderProgramID, VERTEX_SHADER, GL_VERTEX_SHADER);
 	fragmentShader = AddShader(shaderProgramID, FRAGMENT_SHADER, GL_FRAGMENT_SHADER);
-
+	
 	GLint Success = 0;
 	GLchar ErrorLog[1024] = { 0 };
 
@@ -162,6 +171,7 @@ GLuint CompileShaders()
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
 
+
 	return shaderProgramID;
 }
 
@@ -173,8 +183,8 @@ Vertex Object Functions
 ------------------------------------------*/
 #pragma region VBO_FUNCTIONS
 
-void generateObjectBuffers(GLuint* VAO, GLfloat vertices[], GLuint numVertices, GLfloat colors[]) {
-
+void generateObjectBuffers(GLuint* VAO, GLfloat vertices[], GLuint numVertices) {
+	
 	//A buffer object is created by binding a name returned by GenBuffers to 
 	//a buffer target.The binding is effected by calling glBindBuffers
 	GLuint VBO;
@@ -183,43 +193,74 @@ void generateObjectBuffers(GLuint* VAO, GLfloat vertices[], GLuint numVertices, 
 	glGenBuffers(1, &VBO);
 	//glGenBuffers(1, &EBO);
 
-	// Bind buffer objects
+	// Bind buffer and array objects
 	glBindVertexArray(*VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
 	// After binding, we now fill our object with data, create empty buffer first
 	// if you have more data besides vertices (e.g., colours or yextures), use glBufferSubData to 
 	//tell the buffer when the vertices array ends and when the colors start
-	glBufferData(GL_ARRAY_BUFFER, numVertices * 8 * sizeof(GLfloat), NULL, GL_STATIC_DRAW);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, numVertices * 5 * sizeof(GLfloat), vertices);
-	glBufferSubData(GL_ARRAY_BUFFER, numVertices * 5 * sizeof(GLfloat), numVertices * 3 * sizeof(GLfloat), colors);
-
-
+	glBufferData(GL_ARRAY_BUFFER, numVertices * 8 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
 	// Position attribute
-	//enable position attribute, pointed to by attribPointer, disabled by default in opengl
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)0);
-	// Then set our vertex attributes pointers
-	// 1st param again is 0, location of position data in vertex shader
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0);
+	// param is 0, location of position data in vertex shader
+	//enable position attr, pointed to by attribPointer, disabled by default in opengl
 	glEnableVertexAttribArray(0);
-	// TexCoord attribute
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(2);
-
-	// color attribute
+	// Normal attribute
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)(numVertices * 5 * sizeof(GLfloat)));
+	//Texture attributes
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat)));
+	glEnableVertexAttribArray(2);
+	glBindVertexArray(0);
 
-	//.. note stride sizes of 0 above as coords are tightly packed
+	//.. note stride sizes above would be 0 if are tightly packed
 
 	//bind element array and load indices
 	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(GLuint), indices, GL_STATIC_DRAW);
 
-	
+	//unbind buffers
+	// unbind EBO after VAO otherwise EBO wont be associated with VAO
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0); //call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
+									  //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+void generateLightObjectBuffers(GLuint* VAO, GLfloat vertices[], GLuint numVertices) {
+	// Then, we set the light's VAO (VBO stays the same. After all, the vertices are the same for the light object (also a 3D cube))
+	GLuint VBO;
+	// Bind the Vertex Array Object first, then bind and set vertex buffer(s) and attribute pointer(s).
+	glGenVertexArrays(1, VAO);
+	glGenBuffers(1, &VBO);
+
+	// Bind buffer objects
+	glBindVertexArray(*VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+	glBufferData(GL_ARRAY_BUFFER, numVertices * 8 * sizeof(GLfloat), vertices, GL_STATIC_DRAW);
+
+	// Set the vertex attributes (only position data for the lamp))
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0); // Note that we skip over the normal vectors
+	glEnableVertexAttribArray(0);
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+#pragma endregion VBO_FUNCTIONS
+
+
+/*-----------------------------------------
+	Mesh & Texture Functions
+------------------------------------------*/
+#pragma region MESH_TEXTURE_FUNCTIONS
+
+void generateTexture(const char* texture_loc, GLuint* texture) {
+
 	// Load and create a texture
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture); // All upcoming GL_TEXTURE_2D operations now have effect on this texture object
-	// Set the texture wrapping parameters
+	glGenTextures(1, texture);
+	glBindTexture(GL_TEXTURE_2D, *texture); // All upcoming GL_TEXTURE_2D operations now have effect on this texture object
+											// Set the texture wrapping parameters
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	// Set texture wrapping to GL_REPEAT (usually basic wrapping method)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 	// Set texture filtering parameters
@@ -228,21 +269,52 @@ void generateObjectBuffers(GLuint* VAO, GLfloat vertices[], GLuint numVertices, 
 
 	// Load image, create texture and generate mipmaps
 	int width, height;
-	unsigned char* image = SOIL_load_image("../wall.jpg", &width, &height, 0, SOIL_LOAD_RGB);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	unsigned char* image = SOIL_load_image(texture_loc, &width, &height, 0, SOIL_LOAD_RGBA);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 	//free the image memory and unbind texture
 	SOIL_free_image_data(image);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	
-	//unbind buffers
-	// unbind EBO after VAO otherwise EBO wont be associated with VAO
-	glBindVertexArray(0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0); //call to glVertexAttribPointer registered VBO as the currently bound vertex buffer object so afterwards we can safely unbind
-									  //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
-#pragma endregion VBO_FUNCTIONS
+
+void generateTextureMap(const char* texture_loc, GLuint* texture) {
+
+	// Load textures
+	//GLuint diffuseMap, specularMap;
+	glGenTextures(1, texture);
+	//glGenTextures(1, &specularMap);
+	int width, height;
+	unsigned char* image;
+	// Generate texture map
+	image = SOIL_load_image(texture_loc, &width, &height, 0, SOIL_LOAD_RGB);
+	glBindTexture(GL_TEXTURE_2D, *texture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	SOIL_free_image_data(image);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+	
+	/* Specular map
+	image = SOIL_load_image("container2_specular.png", &width, &height, 0, SOIL_LOAD_RGB);
+	glBindTexture(GL_TEXTURE_2D, specularMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	
+	SOIL_free_image_data(image);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	*/
+}
+
+#pragma endregion MESH_TEXTURE_FUNCTIONS
 
 
 /*-----------------------------------------
@@ -303,6 +375,7 @@ void keyOperations(void) {
 Display Functions
 ------------------------------------------*/
 #pragma region DISPLAY_FUNCTIONS
+
 void display() {
 
 	keyOperations();
@@ -326,10 +399,77 @@ void display() {
 	};
 
 	glm::vec3 wallPositions[] = {
-		glm::vec3(0.0, 5.0, -4.0),
-		glm::vec3(0.0, 5.0, -4.0),
-		glm::vec3(0.0, 5.0, -4.0),
-		glm::vec3(0.0, 5.0, -4.0)
+		glm::vec3(0.0, 5.0, -14.0),
+		glm::vec3(-10.0, 5.0, -4.0),
+		glm::vec3(0.0, 5.0, 6.0),
+		glm::vec3(10.0, 5.0, -4.0)
+	};
+
+	glm::vec3 lightPositions[] = {
+		glm::vec3(15.0f, 9.0f, -21.0f),
+		glm::vec3(10.0f, 9.0f, -21.0f),
+		glm::vec3(5.0f, 9.0f, -21.0f),
+		glm::vec3(0.0f, 9.0f, -21.0f),
+		glm::vec3(-5.0f, 9.0f, -21.0f),
+		glm::vec3(-10.2f, 9.0f, -21.0f),
+		glm::vec3(-15.0f, 9.0f, -21.0f),
+
+		glm::vec3(15.0f, 9.0f, -16.0f),
+		glm::vec3(10.0f, 9.0f, -16.0f),
+		glm::vec3(5.0f, 9.0f, -16.0f),
+		glm::vec3(0.0f, 9.0f, -16.0f),
+		glm::vec3(-5.0f, 9.0f, -16.0f),
+		glm::vec3(-10.0f, 9.0f, -16.0f),
+		glm::vec3(-15.0f, 9.0f, -16.0f),
+
+		glm::vec3(15.0f, 9.0f, -11.0f),
+		glm::vec3(10.0f, 9.0f, -11.0f),
+		glm::vec3(5.0f, 9.0f, -11.0f),
+		glm::vec3(0.0f, 9.0f, -11.0f),
+		glm::vec3(-5.0f, 9.0f, -11.0f),
+		glm::vec3(-10.2f, 9.0f, -11.0f),
+		glm::vec3(-15.0f, 9.0f, -11.0f),
+
+		glm::vec3(15.0f, 9.0f, -6.0f),
+		glm::vec3(10.0f, 9.0f, -6.0f),
+		glm::vec3(5.0f, 9.0f, -6.0f),
+		glm::vec3(0.0f, 9.0f, -6.0f),
+		glm::vec3(-5.0f, 9.0f, -6.0f),
+		glm::vec3(-10.0f, 9.0f, -6.0f),
+		glm::vec3(-15.0f, 9.0f, -6.0f),
+
+		glm::vec3(15.0f, 9.0f, -1.0f),
+		glm::vec3(10.0f, 9.0f, -1.0f),
+		glm::vec3(5.0f, 9.0f, -1.0f),
+		glm::vec3(0.0f, 9.0f, -1.0f),
+		glm::vec3(-5.0f, 9.0f, -1.0f),
+		glm::vec3(-10.0f, 9.0f, -1.0f),
+		glm::vec3(-15.0f, 9.0f, -1.0f),
+
+		glm::vec3(15.0f, 9.0f, 4.0f),
+		glm::vec3(10.0f, 9.0f, 4.0f),
+		glm::vec3(5.0f, 9.0f, 4.0f),
+		glm::vec3(0.0f, 9.0f, 4.0f),
+		glm::vec3(-5.0f, 9.0f, 4.0f),
+		glm::vec3(-10.0f, 9.0f, 4.0f),
+		glm::vec3(-15.0f, 9.0f, 4.0f),
+
+		glm::vec3(15.0f, 9.0f, 9.0f),
+		glm::vec3(10.0f, 9.0f, 9.0f),
+		glm::vec3(5.0f, 9.0f, 9.0f),
+		glm::vec3(0.0f, 9.0f, 9.0f),
+		glm::vec3(-5.0f, 9.0f, 9.0f),
+		glm::vec3(-10.0f, 9.0f, 9.0f),
+		glm::vec3(-15.0f, 9.0f, 9.0f),
+
+		glm::vec3(15.0f, 9.0f, 14.0f),
+		glm::vec3(10.0f, 9.0f, 14.0f),
+		glm::vec3(5.0f, 9.0f, 14.0f),
+		glm::vec3(0.0f, 9.0f, 14.0f),
+		glm::vec3(-5.0f, 9.0f, 14.0f),
+		glm::vec3(-10.0f, 9.0f, 14.0f),
+		glm::vec3(-15.0f, 9.0f, 14.0f),
+
 	};
 
 	// enable depth-testing - only draw onto a pixel if the shape is closer to the viewer
@@ -337,23 +477,36 @@ void display() {
 	glDepthFunc(GL_LESS); // depth-testing interprets a smaller value as "closer"
 
 	//clear last display. Clear screen color buffer & depth buffer
-	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//draw stuff
-	glUseProgram(shaderProgramID);
 
-	glBindTexture(GL_TEXTURE_2D, texture);
+	//draw objects
 
-	// Create transformations
-	// Camera/View transformation
+	glUseProgram(objectShaderProgramID);
+	GLint lightPosLoc = glGetUniformLocation(objectShaderProgramID, "lightPos");
+	GLint viewPosLoc = glGetUniformLocation(objectShaderProgramID, "viewPos");
+	glUniform3f(lightPosLoc, lightPos.x, lightPos.y, lightPos.z);
+	glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+
+	// Set lights properties
+	// set light properties in objectFragShader
+	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.ambient"), 0.3f, 0.3f, 0.3f);
+	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.diffuse"), 0.5f, 0.5f, 0.5f);
+	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.specular"), 1.0f, 1.0f, 1.0f);
+	// Set material properties
+	glUniform1i(glGetUniformLocation(objectShaderProgramID, "material.specular"), 1);
+	glUniform1i(glGetUniformLocation(objectShaderProgramID, "material.diffuse"), 0);
+	 // Specular doesn't have full effect on this object's material
+	glUniform1f(glGetUniformLocation(objectShaderProgramID, "material.shininess"), 32.0f);
+
+	// Create Camera/View transformations
+	glm::mat4 view;
 	glm::vec3 front;
 	front.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
 	front.y = sin(glm::radians(pitch));
 	front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
 	cameraFront = glm::normalize(front);
-
-	glm::mat4 view;
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
 	/*Move camera round in circle
@@ -370,14 +523,21 @@ void display() {
 	projection = glm::perspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
 
 	// Get their uniform location
-	GLint modelLoc = glGetUniformLocation(shaderProgramID, "model");
-	GLint viewLoc = glGetUniformLocation(shaderProgramID, "view");
-	GLint projLoc = glGetUniformLocation(shaderProgramID, "projection");
+	GLint modelLoc = glGetUniformLocation(objectShaderProgramID, "model");
+	GLint viewLoc = glGetUniformLocation(objectShaderProgramID, "view");
+	GLint projLoc = glGetUniformLocation(objectShaderProgramID, "projection");
 	// Pass the matrices to the shader
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 	// Note: currently we set the projection matrix each frame, but since the projection matrix rarely 
 	//changes it's often best practice to set it outside the main loop only once.
 	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+	// Bind diffuse map
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, containerDiffuseMapID);
+	// Bind specular map
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, containerSpecularMapID);
 
 	glBindVertexArray(CUBE_VAO);
 	for (GLuint i = 0; i < 14; i++)
@@ -389,40 +549,75 @@ void display() {
 		model = glm::rotate(model, (GLfloat)(glutGet(GLUT_ELAPSED_TIME) / (j*100.0f)) * angle, glm::vec3(1.0f, 0.3f, 0.5f));
 
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
 		glDrawArrays(GL_TRIANGLES, 0, cube_vertex_count);
 	}
 	glBindVertexArray(0);
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, wallTextID);
 
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.diffuse"), 0.6f, 0.6f, 0.6f);
+	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.specular"), 0.5f, 0.5f, 0.5f);
+
+	
 	glBindVertexArray(GROUND_VAO);
-
 	//draw four walls
 	for (GLuint i = 0; i < 4; i++)
 	{
 		glm::mat4 model;
 		model = glm::translate(model, wallPositions[i]);
 		model = glm::rotate(model, (i*90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(20.0f, 20.0f, 20.0f));
+		model = glm::scale(model, glm::vec3(40.0f, 20.0f, 20.0f));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 		glDrawArrays(GL_TRIANGLES, 0, ground_vertex_count);
 	}
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, groundTextID);
+
+	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.diffuse"), 1.0f, 1.0f, 1.0f);
+	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.specular"), 0.1f, 0.1f, 0.1f);
+
 	//draw ground
 	glm::mat4 model;
-	//model2 = glm::translate(model2, glm::vec3(0.0f, 0.0f, -5.0f));
-	model = glm::translate(model, glm::vec3(0.0, -15.0, -4.0));
+	model = glm::translate(model, glm::vec3(0.0, -25.0, -4.0));
 	model = glm::rotate(model, (90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	model = glm::scale(model, glm::vec3(20.0f, 20.0f, 20.0f));
-	
+	model = glm::scale(model, glm::vec3(40.0f, 40.0f, 40.0f));
+	//glBindTexture(GL_TEXTURE_2D, GROUND_TEXT);
 	
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 	glDrawArrays(GL_TRIANGLES, 0, ground_vertex_count);
+	
+	glBindTexture(GL_TEXTURE_2D, 0);
 
-	glBindVertexArray(0);
+	//draw light source(s)
+	glUseProgram(lightingShaderProgramID);
+	modelLoc = glGetUniformLocation(lightingShaderProgramID, "model");
+	viewLoc = glGetUniformLocation(lightingShaderProgramID, "view");
+	projLoc = glGetUniformLocation(lightingShaderProgramID, "projection");
+	// Set matrices
+	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
+
+	model = glm::scale(model, glm::vec3(0.33f)); // Make it a smaller cube
+	//draw four walls
+	glBindVertexArray(LIGHT_VAO);
+	for (GLuint i = 0; i < 56; i++)
+	{
+		glm::mat4 model;
+		model = glm::translate(model, lightPositions[i]);
+		model = glm::scale(model, glm::vec3(1.0f, 1.0f, 3.0f));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+		glDrawArrays(GL_TRIANGLES, 0, cube_vertex_count);
+	}
+	
 	// Swap the screen buffers
 	glutSwapBuffers();
 
@@ -459,12 +654,71 @@ void init() {
 	memset(specKeys, 0, sizeof(bool) * 256);
 
 	// Set up the shaders
-	shaderProgramID = CompileShaders();
+	objectShaderProgramID = CompileShaders(OBJECT_VERTEX_SHADER, OBJECT_FRAGMENT_SHADER);
+	lightingShaderProgramID = CompileShaders(LIGHTING_VERTEX_SHADER, LIGHTING_FRAGMENT_SHADER);
 
+	// Generate textures
+	// tex locations
+	const char wall_texture[] = "../wall.jpg";
+	const char cube_texture[] = "../container.jpg";
+	const char ground_texture[] = "../supermarket-wall-clean.jpg";
+	const char cube_specular[] = "../container_specular.png";
+	const char cube_diffuse[] = "../container.png";
+
+	generateTexture(wall_texture, &wallTextID);
+	generateTexture(cube_texture, &cubeTextID);
+	generateTexture(ground_texture, &groundTextID);
+	generateTextureMap(cube_specular, &containerSpecularMapID);
+	generateTextureMap(cube_diffuse, &containerDiffuseMapID);
+
+	GLfloat vertices[] = {
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
+
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+
+		0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+		0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+		0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+		0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
+	};
+	
 	// Put the vertices and colors into a vertex buffer object
-	generateObjectBuffers(&CUBE_VAO, cube_vertices, cube_vertex_count, cube_colors);
-	generateObjectBuffers(&GROUND_VAO, ground_vertices, ground_vertex_count, ground_colors);
-
+	generateObjectBuffers(&CUBE_VAO, cube_vertices, cube_vertex_count);
+	generateObjectBuffers(&GROUND_VAO, ground_vertices, ground_vertex_count);
+	generateLightObjectBuffers(&LIGHT_VAO, cube_vertices, cube_vertex_count);
 }
 
 int main(int argc, char** argv) {
@@ -472,7 +726,7 @@ int main(int argc, char** argv) {
 	glutInit(&argc, argv);
 	//glut double means we are using two buffers, one is drawn to screen,
 	//other is where we render stuff to draw
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
 	//using version 3.3
@@ -519,6 +773,7 @@ int main(int argc, char** argv) {
 
 	// Set up your objects and shaders
 	init();
+
 
 	// Begin infinite event loop
 	// draw/idle/callbacks etc will be called in here

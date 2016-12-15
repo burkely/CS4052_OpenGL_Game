@@ -1,0 +1,71 @@
+#version 330 core
+
+// define the layout of the struct and then simply declare a uniform variable with the newly 
+// created struct as its type.
+struct Material {
+	//We also remove the ambient material color vector since the ambient color is in almost all 
+	// cases equal to the diffuse color so there's no need to store it separately
+	sampler2D diffuse;
+	//sampler 2d for map
+	sampler2D specular;
+	//  shininess impacts the scattering/radius of the specular highlight.
+	float shininess;
+}; 
+// http://devernay.free.fr/cours/opengl/materials.html for close to real world values for materials
+  
+
+struct Light {
+    vec3 position;
+  
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+uniform Light light; 
+uniform Material material;
+uniform vec3 viewPos;
+
+in vec3 FragPos;  
+in vec3 Normal;  
+in vec2 TexCoords;
+
+out vec4 color;
+
+
+//Takes into account material types:
+void main()
+{
+	// AMBIENT
+	vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));
+  	
+    
+	// DIFFUSE
+	// We want to make sure all relevant vecs end up as unit so we
+	// normalize both the normal & resulting direction vec
+	vec3 norm = normalize(Normal);
+	vec3 lightDir = normalize(light.position - FragPos); 	
+
+	// We want to calculate diffuse impact light has on current fragment by 
+	// taking dotproduct of norm & lightDir vec. The resulting value then 
+	// mult with light's color to get diffuse component, resulting in a darker 
+	// diffuse component the greater the angle is between both vecs.
+	float diff = max(dot(norm, lightDir), 0.0);
+	// the max function that returns the highest of both its parameters to make
+	// sure the diffuse component (and thus the colors) never become negative.
+	vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
+    
+    	// SPECULAR
+    	vec3 viewDir = normalize(viewPos - FragPos);
+    	vec3 reflectDir = reflect(-lightDir, norm); 
+ 
+	// shininess value of the highlight. higher shininess value of object the more
+	// it properly reflects the light instead of scattering it all around and thus the smaller the highlight becomes.
+    	float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    	vec3 specular = light.specular * spec * vec3(texture(material.specular, TexCoords));
+	// COMBINATION
+	// We have both ambient & diffuse components. we add both colors & then multiply 
+	// result with the color of object to get the resulting fragment's output color:     	
+	vec3 result = (ambient + diffuse + specular);
+    	color = vec4(result, 1.0f);
+} 
