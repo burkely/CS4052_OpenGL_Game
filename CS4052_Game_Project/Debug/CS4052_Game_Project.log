@@ -1,15 +1,13 @@
 ﻿  main.cpp
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(358): warning C4305: '+=': truncation from 'double' to 'float'
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(361): warning C4305: '-=': truncation from 'double' to 'float'
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(364): warning C4305: '+=': truncation from 'double' to 'float'
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(367): warning C4305: '-=': truncation from 'double' to 'float'
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(552): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(576): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(594): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(618): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(633): warning C4244: 'initializing': conversion from 'D_WORD' to 'float', possible loss of data
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(719): warning C4244: 'argument': conversion from 'float' to 'GLuint', possible loss of data
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(720): warning C4244: 'argument': conversion from 'float' to 'GLuint', possible loss of data
-c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(721): warning C4244: 'argument': conversion from 'float' to 'GLuint', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(440): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(459): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(470): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(482): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(499): warning C4244: 'argument': conversion from 'float' to 'GLsizei', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(550): warning C4244: 'argument': conversion from 'float' to 'GLuint', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(551): warning C4244: 'argument': conversion from 'float' to 'GLuint', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(552): warning C4244: 'argument': conversion from 'float' to 'GLuint', possible loss of data
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(586): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
+c:\users\lydia\documents\visual studio 2015\projects\cs4052_game_project\cs4052_game_project\main.cpp(587): warning C4305: 'argument': truncation from 'double' to 'GLfloat'
   CS4052_Game_Project.vcxproj -> C:\Users\Lydia\Documents\Visual Studio 2015\Projects\CS4052_Game_Project\Debug\CS4052_Game_Project.exe
   CS4052_Game_Project.vcxproj -> C:\Users\Lydia\Documents\Visual Studio 2015\Projects\CS4052_Game_Project\Debug\CS4052_Game_Project.pdb (Partial PDB)

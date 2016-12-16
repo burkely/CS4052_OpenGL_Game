@@ -14,15 +14,21 @@ struct Material {
 // http://devernay.free.fr/cours/opengl/materials.html for close to real world values for materials
   
 
-struct Light {
+struct PointLight {    
     vec3 position;
-  
+    
+    float constant;
+    float linear;
+    float quadratic;  
+
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
-};
+};  
 
-uniform Light light; 
+#define NR_POINT_LIGHTS 24
+  
+uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform Material material;
 uniform vec3 viewPos;
 
@@ -32,40 +38,54 @@ in vec2 TexCoords;
 
 out vec4 color;
 
+// Function prototypes
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
 //Takes into account material types:
 void main()
 {
-	// AMBIENT
-	vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));
-  	
-    
-	// DIFFUSE
-	// We want to make sure all relevant vecs end up as unit so we
-	// normalize both the normal & resulting direction vec
-	vec3 norm = normalize(Normal);
-	vec3 lightDir = normalize(light.position - FragPos); 	
 
-	// We want to calculate diffuse impact light has on current fragment by 
-	// taking dotproduct of norm & lightDir vec. The resulting value then 
-	// mult with light's color to get diffuse component, resulting in a darker 
-	// diffuse component the greater the angle is between both vecs.
-	float diff = max(dot(norm, lightDir), 0.0);
-	// the max function that returns the highest of both its parameters to make
-	// sure the diffuse component (and thus the colors) never become negative.
-	vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
+ 	// Properties
+	vec3 norm = normalize(Normal);
+	vec3 viewDir = normalize(viewPos - FragPos);
     
-    	// SPECULAR
-    	vec3 viewDir = normalize(viewPos - FragPos);
-    	vec3 reflectDir = reflect(-lightDir, norm); 
- 
-	// shininess value of the highlight. higher shininess value of object the more
-	// it properly reflects the light instead of scattering it all around and thus the smaller the highlight becomes.
-    	float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
-    	vec3 specular = light.specular * spec * vec3(texture(material.specular, TexCoords));
-	// COMBINATION
-	// We have both ambient & diffuse components. we add both colors & then multiply 
-	// result with the color of object to get the resulting fragment's output color:     	
-	vec3 result = (ambient + diffuse + specular);
-    	color = vec4(result, 1.0f);
-} 
+    // == ======================================
+    // Our lighting is set up in 3 phases: directional, point lights and an optional flashlight
+    // For each phase, a calculate function is defined that calculates the corresponding color
+    // per lamp. In the main() function we take all the calculated colors and sum them up for
+    // this fragment's final color.
+    // == ======================================
+    
+	
+	vec3 result = vec3(0.0, 0.0, 0.0);
+
+	for(int i = 0; i < NR_POINT_LIGHTS; i++){
+		result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);   
+	} 
+	
+    	color = vec4(result, 1.0);
+}
+
+
+// Calculates the color when using a point light.
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
+{
+    vec3 lightDir = normalize(light.position - fragPos);
+    // Diffuse shading
+    float diff = max(dot(normal, lightDir), 0.0);
+    // Specular shading
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
+    // Attenuation
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0f / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
+    // Combine results
+    vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));
+    vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
+    vec3 specular = light.specular * spec * vec3(texture(material.specular, TexCoords));
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+    return (ambient + diffuse + specular);
+}
+

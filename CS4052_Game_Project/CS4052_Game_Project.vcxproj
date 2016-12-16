@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClInclude Include="cube_vertices.h" />
     <ClInclude Include="ground_vertices.h" />
+    <ClInclude Include="object_positions.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

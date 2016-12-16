@@ -6,6 +6,8 @@ Headers, Include files & Namespace Declarations
 #include <stdio.h>
 #include <iostream>
 #include <mmsystem.h>
+#include <string.h>
+#include <string>
 
 // For loading textures
 #include "SOIL.h"
@@ -15,9 +17,10 @@ Headers, Include files & Namespace Declarations
 #include <glm/glm/gtc/matrix_transform.hpp>
 #include <glm/glm/gtc/type_ptr.hpp>
 
-//list of vertices
+//list of vertices & positions
 #include "cube_vertices.h"
 #include "ground_vertices.h"
+#include "object_positions.h"
 
 using namespace std;
 
@@ -44,10 +47,11 @@ GLuint CUBE_VAO, GROUND_VAO, LIGHT_VAO;
 
 //Textures
 GLuint containerSpecularMapID, containerDiffuseMapID;
-GLuint cubeTextID, groundTextID, lightTextID, wallTextID;
+GLuint cubeTextID, groundTextID, lightTextID;
+GLuint blankTextID, wallTextID;
 
 // View & Camera Vars
-glm::vec3 cameraPos = glm::vec3(0.0f, -3.0f, 6.0f);
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 6.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 4.0f, 0.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -57,8 +61,8 @@ float pitch = 0.0f, yaw = -90.0f;
 bool keys[256];
 bool specKeys[256];
 
-// Light attributes
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+//projection
+glm::mat4 projection;
 
 
 /*-----------------------------------------
@@ -342,7 +346,7 @@ void keyOperations(void) {
 	//so we cant move up and down the y-axis, remove y value from cameraFront
 	glm::vec3 camForward  = cameraFront * glm::vec3(1.0f, 0.0f, 1.0f);
 
-	GLfloat cameraSpeed = 0.02f;
+	GLfloat cameraSpeed = 0.1f;
 	if (specKeys[GLUT_KEY_UP])
 		cameraPos += cameraSpeed * camForward;
 	if (specKeys[GLUT_KEY_DOWN])
@@ -355,17 +359,19 @@ void keyOperations(void) {
 
 	if (keys['w'])
 		//if(pitch <= 89.9f)
-			pitch += 0.1;
+			pitch += 0.25;
 	if (keys['s'])
 		//if (pitch >= -89.9f)
-			pitch -= 0.1;
+			pitch -= 0.25;
 	if (keys['d'])
 		//if (yaw <= -0.1f)
-		yaw += 0.1;
+		yaw += 0.25;
 	if (keys['a'])
 		//if (yaw >= -179.9f)
-			yaw -= 0.1;
+			yaw -= 0.25;
 
+	// Draw the next frame
+	glutPostRedisplay();
 }
 
 #pragma endregion KEY_FUNCTIONS
@@ -377,100 +383,8 @@ Display Functions
 #pragma region DISPLAY_FUNCTIONS
 
 void display() {
-
+	//check for key events
 	keyOperations();
-
-	glm::vec3 cubePositions[] = {
-		glm::vec3(0.0f,  0.0f,  0.0f),
-		glm::vec3(3.0f,  5.0f, -15.0f),
-		glm::vec3(-3.5f, -2.2f, -2.5f),
-		glm::vec3(-5.8f, -2.0f, -12.3f),
-		glm::vec3(5.4f, -0.4f, -3.5f),
-		glm::vec3(-1.7f,  3.0f, -7.5f),
-		glm::vec3(4.3f, -2.0f, -2.5f),
-		glm::vec3(2.1f,  1.2f, -2.5f),
-		glm::vec3(1.5f,  0.2f, -1.5f),
-		glm::vec3(-2.9f,  1.0f, -1.5f),
-
-		glm::vec3(2.4f, -1.6f, -2.5f),
-		glm::vec3(2.6f,  2.0f, -1.5f),
-		glm::vec3(-2.5f,  -1.0f, -1.5f),
-		glm::vec3(-4.3f,  1.0f, -1.5f)
-	};
-
-	glm::vec3 wallPositions[] = {
-		glm::vec3(0.0, 5.0, -14.0),
-		glm::vec3(-10.0, 5.0, -4.0),
-		glm::vec3(0.0, 5.0, 6.0),
-		glm::vec3(10.0, 5.0, -4.0)
-	};
-
-	glm::vec3 lightPositions[] = {
-		glm::vec3(15.0f, 9.0f, -21.0f),
-		glm::vec3(10.0f, 9.0f, -21.0f),
-		glm::vec3(5.0f, 9.0f, -21.0f),
-		glm::vec3(0.0f, 9.0f, -21.0f),
-		glm::vec3(-5.0f, 9.0f, -21.0f),
-		glm::vec3(-10.2f, 9.0f, -21.0f),
-		glm::vec3(-15.0f, 9.0f, -21.0f),
-
-		glm::vec3(15.0f, 9.0f, -16.0f),
-		glm::vec3(10.0f, 9.0f, -16.0f),
-		glm::vec3(5.0f, 9.0f, -16.0f),
-		glm::vec3(0.0f, 9.0f, -16.0f),
-		glm::vec3(-5.0f, 9.0f, -16.0f),
-		glm::vec3(-10.0f, 9.0f, -16.0f),
-		glm::vec3(-15.0f, 9.0f, -16.0f),
-
-		glm::vec3(15.0f, 9.0f, -11.0f),
-		glm::vec3(10.0f, 9.0f, -11.0f),
-		glm::vec3(5.0f, 9.0f, -11.0f),
-		glm::vec3(0.0f, 9.0f, -11.0f),
-		glm::vec3(-5.0f, 9.0f, -11.0f),
-		glm::vec3(-10.2f, 9.0f, -11.0f),
-		glm::vec3(-15.0f, 9.0f, -11.0f),
-
-		glm::vec3(15.0f, 9.0f, -6.0f),
-		glm::vec3(10.0f, 9.0f, -6.0f),
-		glm::vec3(5.0f, 9.0f, -6.0f),
-		glm::vec3(0.0f, 9.0f, -6.0f),
-		glm::vec3(-5.0f, 9.0f, -6.0f),
-		glm::vec3(-10.0f, 9.0f, -6.0f),
-		glm::vec3(-15.0f, 9.0f, -6.0f),
-
-		glm::vec3(15.0f, 9.0f, -1.0f),
-		glm::vec3(10.0f, 9.0f, -1.0f),
-		glm::vec3(5.0f, 9.0f, -1.0f),
-		glm::vec3(0.0f, 9.0f, -1.0f),
-		glm::vec3(-5.0f, 9.0f, -1.0f),
-		glm::vec3(-10.0f, 9.0f, -1.0f),
-		glm::vec3(-15.0f, 9.0f, -1.0f),
-
-		glm::vec3(15.0f, 9.0f, 4.0f),
-		glm::vec3(10.0f, 9.0f, 4.0f),
-		glm::vec3(5.0f, 9.0f, 4.0f),
-		glm::vec3(0.0f, 9.0f, 4.0f),
-		glm::vec3(-5.0f, 9.0f, 4.0f),
-		glm::vec3(-10.0f, 9.0f, 4.0f),
-		glm::vec3(-15.0f, 9.0f, 4.0f),
-
-		glm::vec3(15.0f, 9.0f, 9.0f),
-		glm::vec3(10.0f, 9.0f, 9.0f),
-		glm::vec3(5.0f, 9.0f, 9.0f),
-		glm::vec3(0.0f, 9.0f, 9.0f),
-		glm::vec3(-5.0f, 9.0f, 9.0f),
-		glm::vec3(-10.0f, 9.0f, 9.0f),
-		glm::vec3(-15.0f, 9.0f, 9.0f),
-
-		glm::vec3(15.0f, 9.0f, 14.0f),
-		glm::vec3(10.0f, 9.0f, 14.0f),
-		glm::vec3(5.0f, 9.0f, 14.0f),
-		glm::vec3(0.0f, 9.0f, 14.0f),
-		glm::vec3(-5.0f, 9.0f, 14.0f),
-		glm::vec3(-10.0f, 9.0f, 14.0f),
-		glm::vec3(-15.0f, 9.0f, 14.0f),
-
-	};
 
 	// enable depth-testing - only draw onto a pixel if the shape is closer to the viewer
 	glEnable(GL_DEPTH_TEST); 
@@ -480,26 +394,11 @@ void display() {
 	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-	//draw objects
-
 	glUseProgram(objectShaderProgramID);
-	GLint lightPosLoc = glGetUniformLocation(objectShaderProgramID, "lightPos");
+
 	GLint viewPosLoc = glGetUniformLocation(objectShaderProgramID, "viewPos");
-	glUniform3f(lightPosLoc, lightPos.x, lightPos.y, lightPos.z);
 	glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
-
-	// Set lights properties
-	// set light properties in objectFragShader
-	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.ambient"), 0.3f, 0.3f, 0.3f);
-	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.diffuse"), 0.5f, 0.5f, 0.5f);
-	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.specular"), 1.0f, 1.0f, 1.0f);
-	// Set material properties
-	glUniform1i(glGetUniformLocation(objectShaderProgramID, "material.specular"), 1);
-	glUniform1i(glGetUniformLocation(objectShaderProgramID, "material.diffuse"), 0);
-	 // Specular doesn't have full effect on this object's material
-	glUniform1f(glGetUniformLocation(objectShaderProgramID, "material.shininess"), 32.0f);
-
+	
 	// Create Camera/View transformations
 	glm::mat4 view;
 	glm::vec3 front;
@@ -508,19 +407,6 @@ void display() {
 	front.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
 	cameraFront = glm::normalize(front);
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-
-	/*Move camera round in circle
-	t = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
-	glm::mat4 view;
-	GLfloat radius = 10.0f;
-	GLfloat camX = sin(t) * radius;
-	GLfloat camZ = cos(t) * radius;
-	view = glm::lookAt(glm::vec3(camX, 0.0, camZ), glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
-	*/
-
-	//projection
-	glm::mat4 projection;
-	projection = glm::perspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
 
 	// Get their uniform location
 	GLint modelLoc = glGetUniformLocation(objectShaderProgramID, "model");
@@ -532,6 +418,8 @@ void display() {
 	//changes it's often best practice to set it outside the main loop only once.
 	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
+
+	// ------ draw cube objects -----------------------------------------------------------------
 	// Bind diffuse map
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, containerDiffuseMapID);
@@ -540,79 +428,72 @@ void display() {
 	glBindTexture(GL_TEXTURE_2D, containerSpecularMapID);
 
 	glBindVertexArray(CUBE_VAO);
-	for (GLuint i = 0; i < 14; i++)
+	for (GLuint i = 0; i < 6; i++)
 	{
-		float j = i + 10.0f;
+		//float j = i + 10.0f;
 		glm::mat4 model;
-		model = glm::translate(model, cubePositions[i]);
-		GLfloat angle = 20.0f + j;
-		model = glm::rotate(model, (GLfloat)(glutGet(GLUT_ELAPSED_TIME) / (j*100.0f)) * angle, glm::vec3(1.0f, 0.3f, 0.5f));
+		model = glm::translate(model, outsideShelvingPositions[i]);
+		//GLfloat angle = 20.0f + j;
+		model = glm::scale(model, glm::vec3(10.0f, 6.0f, 1.0f));
 
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		glDrawArrays(GL_TRIANGLES, 0, cube_vertex_count);
 	}
-	glBindVertexArray(0);
-
+	
+	
+	// ------ draw four walls -----------------------------------------------------------------
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, wallTextID);
-
+	glBindTexture(GL_TEXTURE_2D, blankTextID);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.diffuse"), 0.6f, 0.6f, 0.6f);
-	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.specular"), 0.5f, 0.5f, 0.5f);
-
-	
 	glBindVertexArray(GROUND_VAO);
-	//draw four walls
 	for (GLuint i = 0; i < 4; i++)
 	{
 		glm::mat4 model;
 		model = glm::translate(model, wallPositions[i]);
 		model = glm::rotate(model, (i*90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::scale(model, glm::vec3(40.0f, 20.0f, 20.0f));
+		model = glm::scale(model, glm::vec3(60.0f, 15.0f, 15.0f));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 		glDrawArrays(GL_TRIANGLES, 0, ground_vertex_count);
 	}
 
+	// ------ draw ground ---------------------------------------------------------------------
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, groundTextID);
-
-	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.diffuse"), 1.0f, 1.0f, 1.0f);
-	glUniform3f(glGetUniformLocation(objectShaderProgramID, "light.specular"), 0.1f, 0.1f, 0.1f);
-
-	//draw ground
 	glm::mat4 model;
-	model = glm::translate(model, glm::vec3(0.0, -25.0, -4.0));
+	model = glm::translate(model, glm::vec3(0.0, -35.0, -4.0));
 	model = glm::rotate(model, (90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	model = glm::scale(model, glm::vec3(40.0f, 40.0f, 40.0f));
-	//glBindTexture(GL_TEXTURE_2D, GROUND_TEXT);
-	
+	model = glm::scale(model, glm::vec3(60.0f, 60.0f, 60.0f));
 	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
 	glDrawArrays(GL_TRIANGLES, 0, ground_vertex_count);
 	
-	glBindTexture(GL_TEXTURE_2D, 0);
 
-	//draw light source(s)
+	// ------ draw ceiling ---------------------------------------------------------------------
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, blankTextID);
+
+	model = glm::mat4();
+	model = glm::translate(model, glm::vec3(0.0, -20.0, -4.0));
+	model = glm::rotate(model, (90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	model = glm::scale(model, glm::vec3(60.0f, 60.0f, 60.0f));
+	glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+	glDrawArrays(GL_TRIANGLES, 0, ground_vertex_count);
+
+
+	// ------ draw light source(s) ------------------------------------------------------------
 	glUseProgram(lightingShaderProgramID);
-	modelLoc = glGetUniformLocation(lightingShaderProgramID, "model");
-	viewLoc = glGetUniformLocation(lightingShaderProgramID, "view");
-	projLoc = glGetUniformLocation(lightingShaderProgramID, "projection");
-	// Set matrices
+
 	glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-
-	model = glm::scale(model, glm::vec3(0.33f)); // Make it a smaller cube
-	//draw four walls
 	glBindVertexArray(LIGHT_VAO);
-	for (GLuint i = 0; i < 56; i++)
+	for (GLuint i = 0; i < 24; i++)
 	{
-		glm::mat4 model;
+		model = glm::mat4();
 		model = glm::translate(model, lightPositions[i]);
-		model = glm::scale(model, glm::vec3(1.0f, 1.0f, 3.0f));
+		model = glm::scale(model, glm::vec3(0.5f, 0.5f, 3.5f));
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
 		glDrawArrays(GL_TRIANGLES, 0, cube_vertex_count);
@@ -620,24 +501,13 @@ void display() {
 	
 	// Swap the screen buffers
 	glutSwapBuffers();
-
 	glutPostRedisplay();
 }
 
 void idle() {
-	typedef double D_WORD;
-
-	// Wait until at least 16ms passed since start of last frame (Effectively caps framerate at ~60fps)
-	static D_WORD  last_time = 0;
-	D_WORD  curr_time = timeGetTime();
-	float  delta = (curr_time - last_time) * 0.001f;
-	if (delta > 0.03f)
-		delta = 0.03f;
-	last_time = curr_time;
 
 	// Draw the next frame
 	glutPostRedisplay();
-
 }
 
 #pragma endregion DISPLAY_FUNCTIONS
@@ -648,6 +518,9 @@ void init() {
 
 	//wireframe mode:
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	//set projection
+	projection = glm::perspective(45.0f, (GLfloat)WINDOW_WIDTH / (GLfloat)WINDOW_HEIGHT, 0.1f, 100.0f);
 
 	// make sure keyboard arrays are init to all false
 	memset(keys, 0, sizeof(bool) * 256);
@@ -664,61 +537,57 @@ void init() {
 	const char ground_texture[] = "../supermarket-wall-clean.jpg";
 	const char cube_specular[] = "../container_specular.png";
 	const char cube_diffuse[] = "../container.png";
+	const char blank[] = "../blank.jpg";
 
 	generateTexture(wall_texture, &wallTextID);
 	generateTexture(cube_texture, &cubeTextID);
 	generateTexture(ground_texture, &groundTextID);
 	generateTextureMap(cube_specular, &containerSpecularMapID);
 	generateTextureMap(cube_diffuse, &containerDiffuseMapID);
-
-	GLfloat vertices[] = {
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
-
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,
-
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
-
-		0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
-
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
-
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
-	};
+	generateTexture(blank, &blankTextID);
 	
 	// Put the vertices and colors into a vertex buffer object
 	generateObjectBuffers(&CUBE_VAO, cube_vertices, cube_vertex_count);
 	generateObjectBuffers(&GROUND_VAO, ground_vertices, ground_vertex_count);
 	generateLightObjectBuffers(&LIGHT_VAO, cube_vertices, cube_vertex_count);
+
+	glUseProgram(objectShaderProgramID);
+
+	// Set lights properties
+	// set light properties in objectFragShader
+	glUniform1f(glGetUniformLocation(objectShaderProgramID, "material.shininess"), 32.0f);
+	glUniform1i(glGetUniformLocation(objectShaderProgramID, "material.diffuse"), 0);
+	glUniform1i(glGetUniformLocation(objectShaderProgramID, "material.specular"), 1);
+
+	//Pass point lights to fragment shader
+	for (GLuint i = 0; i < 24; i++) {
+
+		std::string string1 = "pointLights[i].position";
+		std::string string2 = "pointLights[i].ambient";
+		std::string string3 = "pointLights[i].diffuse";
+		std::string string4 = "pointLights[i].specular";
+		std::string string5 = "pointLights[i].constant";
+		std::string string6 = "pointLights[i].linear";
+		std::string string7 = "pointLights[i].quadratic";
+
+		string1.replace(12, 1, to_string(i));
+		string2.replace(12, 1, to_string(i));
+		string3.replace(12, 1, to_string(i));
+		string4.replace(12, 1, to_string(i));
+		string5.replace(12, 1, to_string(i));
+		string6.replace(12, 1, to_string(i));
+		string7.replace(12, 1, to_string(i));
+
+		glUniform3f(glGetUniformLocation(objectShaderProgramID, string1.c_str()), lightPositions[i].x, lightPositions[i].y, lightPositions[i].z);
+		glUniform3f(glGetUniformLocation(objectShaderProgramID, string2.c_str()), 0.5f, 0.5f, 0.5f);
+		glUniform3f(glGetUniformLocation(objectShaderProgramID, string3.c_str()), 0.8f, 0.8f, 0.8f);
+		glUniform3f(glGetUniformLocation(objectShaderProgramID, string4.c_str()), 1.0f, 1.0f, 1.0f);
+		glUniform1f(glGetUniformLocation(objectShaderProgramID, string5.c_str()), 1.0f);
+		glUniform1f(glGetUniformLocation(objectShaderProgramID, string6.c_str()), 0.09);
+		glUniform1f(glGetUniformLocation(objectShaderProgramID, string7.c_str()), 0.032);
+	}
+
+
 }
 
 int main(int argc, char** argv) {
@@ -758,7 +627,7 @@ int main(int argc, char** argv) {
 
 	// Tell glut where the display function is
 	glutDisplayFunc(display);
-	// glutIdleFunc(idle);
+	//glutIdleFunc(idle);
 
 	glutKeyboardFunc(keypress);
 	glutSpecialFunc(specialKeyPress);

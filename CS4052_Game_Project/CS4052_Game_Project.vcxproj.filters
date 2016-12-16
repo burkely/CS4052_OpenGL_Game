@@ -26,5 +26,8 @@
     <ClInclude Include="ground_vertices.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="object_positions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
